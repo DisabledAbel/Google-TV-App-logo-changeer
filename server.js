@@ -174,7 +174,7 @@ async function requestHandler(req, res) {
     try {
       const body = await parseBody(req);
       const logoDataUrl = body.logoDataUrl || body.currentLogo;
-      const requestedAppName = body.appName || body.targetApp;
+      const requestedAppName = body.appName || body.targetApp || body.app;
       const appName = typeof requestedAppName === 'string' && requestedAppName.trim() ? requestedAppName.trim() : 'YouTube';
 
       if (typeof logoDataUrl !== 'string' || !logoDataUrl.startsWith('data:image/')) {

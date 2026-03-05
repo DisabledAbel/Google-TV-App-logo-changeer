@@ -79,8 +79,8 @@ class MainActivity : AppCompatActivity() {
             val apps = collectInstalledAppNames()
             val success = postInstalledApps(base, apps)
             runOnUiThread {
-                prefs.edit().putLong("last_sync_ts", System.currentTimeMillis()).apply()
                 syncStatus.text = if (success) {
+                    prefs.edit().putLong("last_sync_ts", System.currentTimeMillis()).apply()
                     "Synced ${apps.size} apps. Uploader pages now know your TV apps."
                 } else {
                     "Sync failed. Check server URL and ensure same Wi‑Fi network."
