@@ -77,7 +77,7 @@
           setOptions(data.apps || data.knownApps);
         } catch {
           try {
-            const logoRes = await fetch('/api/logo');
+            const logoRes = await fetch('/api/logo').catch(() => fetch('/api/state'));
             const logoData = await logoRes.json();
             setOptions(logoData.knownApps || logoData.installedApps);
           } catch {

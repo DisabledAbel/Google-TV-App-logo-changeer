@@ -81,18 +81,23 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun collectInstalledAppNames(): List<String> {
-        val pm = packageManager
-        val launchIntent = Intent(Intent.ACTION_MAIN, null).apply {
-            addCategory(Intent.CATEGORY_LAUNCHER)
-        }
-
-        val apps = pm.queryIntentActivities(launchIntent, PackageManager.MATCH_ALL)
-            .mapNotNull { it.loadLabel(pm)?.toString()?.trim() }
-            .filter { it.isNotEmpty() }
+        val apps = (collectActivitiesByCategory(Intent.CATEGORY_LAUNCHER) +
+            collectActivitiesByCategory(Intent.CATEGORY_LEANBACK_LAUNCHER))
             .distinct()
             .sorted()
 
         return if (apps.isNotEmpty()) apps else listOf("YouTube")
+    }
+
+    private fun collectActivitiesByCategory(category: String): List<String> {
+        val pm = packageManager
+        val launchIntent = Intent(Intent.ACTION_MAIN, null).apply {
+            addCategory(category)
+        }
+
+        return pm.queryIntentActivities(launchIntent, PackageManager.MATCH_ALL)
+            .mapNotNull { it.loadLabel(pm)?.toString()?.trim() }
+            .filter { it.isNotEmpty() }
     }
 
     private fun postInstalledApps(base: String, apps: List<String>): Boolean {

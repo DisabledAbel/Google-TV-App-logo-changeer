@@ -132,7 +132,7 @@ async function requestHandler(req, res) {
     return;
   }
 
-  if (req.method === 'GET' && url.pathname === '/api/logo') {
+  if (req.method === 'GET' && (url.pathname === '/api/logo' || url.pathname === '/api/state')) {
     sendJson(res, 200, toClientState(currentState));
     return;
   }

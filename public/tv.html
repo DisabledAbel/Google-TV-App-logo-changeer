@@ -82,7 +82,7 @@
         prompt.style.display = 'none';
       });
 
-      fetch('/api/logo')
+      fetch('/api/logo').catch(() => fetch('/api/state'))
         .then((response) => response.json())
         .then((data) => {
           const initialLogo = data?.logoDataUrl || data?.currentLogo;
