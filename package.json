@@ -1,0 +1,10 @@
+{
+  "name": "google-tv-logo-changer",
+  "version": "1.0.0",
+  "description": "Upload logos from web dashboard and push them to a Google TV display screen in real-time.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  }
+}

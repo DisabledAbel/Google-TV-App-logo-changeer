@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>TV Screen</title>
+    <style>
+      body { margin:0; background:#000; color:#fff; font-family:Arial,sans-serif; overflow:hidden; }
+      .screen { width:100vw; height:100vh; display:flex; align-items:center; justify-content:center; position:relative; }
+      img { max-width:86vw; max-height:86vh; object-fit:contain; }
+      .empty { color:#a7b1c2; font-size:2rem; text-align:center; }
+      .badge { position:absolute; top:16px; left:16px; background:rgba(17,25,40,.7); border:1px solid rgba(255,255,255,.2); padding:6px 10px; border-radius:8px; font-size:14px; }
+      .target { position:absolute; top:16px; right:16px; background:rgba(25,42,78,.8); border:1px solid rgba(132,180,255,.5); padding:6px 10px; border-radius:8px; font-size:14px; }
+      .prompt { position:absolute; inset:0; background:rgba(0,0,0,.72); display:none; align-items:center; justify-content:center; }
+      .panel { width:min(92vw,700px); background:#111827; border:1px solid #334155; border-radius:12px; padding:18px; box-shadow:0 20px 50px rgba(0,0,0,.5); }
+      .panel h2 { margin-top:0; }
+      .actions { display:flex; gap:10px; }
+      button { border:none; border-radius:8px; padding:10px 14px; font-size:16px; cursor:pointer; }
+      .primary { background:#3b82f6; color:#fff; }
+      .muted { background:#334155; color:#fff; }
+      .status { margin-top:10px; color:#9fb3d6; font-size:14px; }
+    </style>
+  </head>
+  <body>
+    <div class="screen">
+      <div class="badge">Google TV Logo Receiver</div>
+      <div id="target" class="target">Target app: YouTube</div>
+      <img id="logo" alt="Current logo" style="display:none" />
+      <div id="empty" class="empty">Waiting for logo upload...</div>
+
+      <div id="prompt" class="prompt">
+        <div class="panel">
+          <h2>Replace app picture?</h2>
+          <p id="promptText">A new image was uploaded for YouTube.</p>
+          <div class="actions">
+            <button id="accept" class="primary">Use this image</button>
+            <button id="reject" class="muted">Keep current</button>
+          </div>
+          <div class="status">Tip: This confirms on-screen replacement in this app UI.</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const logo = document.getElementById('logo');
+      const empty = document.getElementById('empty');
+      const prompt = document.getElementById('prompt');
+      const promptText = document.getElementById('promptText');
+      const target = document.getElementById('target');
+      const accept = document.getElementById('accept');
+      const reject = document.getElementById('reject');
+
+      let pendingPayload = null;
+
+      function renderApproved(payload) {
+        target.textContent = `Target app: ${payload.appName || 'YouTube'}`;
+        if (payload.logoDataUrl) {
+          logo.src = payload.logoDataUrl;
+          logo.style.display = 'block';
+          empty.style.display = 'none';
+        } else {
+          logo.style.display = 'none';
+          empty.style.display = 'block';
+        }
+      }
+
+      function showPrompt(payload) {
+        pendingPayload = payload;
+        promptText.textContent = `A new image was uploaded for ${payload.appName || 'YouTube'}. Replace app picture now?`;
+        prompt.style.display = 'flex';
+      }
+
+      accept.addEventListener('click', () => {
+        if (pendingPayload) renderApproved(pendingPayload);
+        pendingPayload = null;
+        prompt.style.display = 'none';
+      });
+
+      reject.addEventListener('click', () => {
+        pendingPayload = null;
+        prompt.style.display = 'none';
+      });
+
+      fetch('/api/logo')
+        .then((response) => response.json())
+        .then((data) => {
+          if (data && data.logoDataUrl) {
+            renderApproved(data);
+          }
+        })
+        .catch(() => {});
+
+      const eventSource = new EventSource('/events');
+      eventSource.addEventListener('logo', (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload && payload.logoDataUrl) {
+            showPrompt(payload);
+          }
+        } catch {}
+      });
+    </script>
+  </body>
+</html>
