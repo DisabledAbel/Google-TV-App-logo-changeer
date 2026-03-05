@@ -57,7 +57,13 @@
           const data = await response.json();
           setOptions(data.apps);
         } catch {
-          setOptions();
+          try {
+            const logoRes = await fetch('/api/logo');
+            const logoData = await logoRes.json();
+            setOptions(logoData.knownApps || logoData.installedApps);
+          } catch {
+            setOptions();
+          }
         }
       }
 

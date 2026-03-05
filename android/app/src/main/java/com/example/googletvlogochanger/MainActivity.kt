@@ -15,6 +15,8 @@ import java.net.URL
 
 class MainActivity : AppCompatActivity() {
     private lateinit var prefs: SharedPreferences
+    private lateinit var serverUrlInput: EditText
+    private lateinit var syncStatus: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -22,10 +24,10 @@ class MainActivity : AppCompatActivity() {
 
         prefs = getSharedPreferences("logo_changer", MODE_PRIVATE)
 
-        val serverUrlInput = findViewById<EditText>(R.id.serverUrlInput)
+        serverUrlInput = findViewById(R.id.serverUrlInput)
         val wifiHint = findViewById<TextView>(R.id.wifiHint)
         val syncAppsButton = findViewById<Button>(R.id.syncAppsButton)
-        val syncStatus = findViewById<TextView>(R.id.syncStatus)
+        syncStatus = findViewById(R.id.syncStatus)
         val openUpload = findViewById<Button>(R.id.openUploadButton)
         val openTv = findViewById<Button>(R.id.openTvButton)
 
@@ -34,34 +36,9 @@ class MainActivity : AppCompatActivity() {
 
         wifiHint.text = "Phone/PC and Google TV must be on the same Wi‑Fi. Use your local server IP (example: http://192.168.1.100:3000)."
 
-        fun runSync(showBusyMessage: Boolean = true) {
-            val base = normalizeBase(serverUrlInput.text.toString())
-            if (base.isEmpty()) {
-                syncStatus.text = "Enter a valid server URL first."
-                return
-            }
-
-            prefs.edit().putString("server_url", base).apply()
-            if (showBusyMessage) syncStatus.text = "Syncing installed apps to server..."
-
-            Thread {
-                val apps = collectInstalledAppNames()
-                val success = postInstalledApps(base, apps)
-                runOnUiThread {
-                    syncStatus.text = if (success) {
-                        "Synced ${apps.size} apps. Uploader pages now know your TV apps."
-                    } else {
-                        "Sync failed. Check server URL and ensure same Wi‑Fi network."
-                    }
-                }
-            }.start()
-        }
-
         syncAppsButton.setOnClickListener {
-            runSync()
+            runSync(showBusyMessage = true)
         }
-
-        runSync(showBusyMessage = false)
 
         openUpload.setOnClickListener {
             openPage(serverUrlInput.text.toString(), "/")
@@ -70,6 +47,36 @@ class MainActivity : AppCompatActivity() {
         openTv.setOnClickListener {
             openPage(serverUrlInput.text.toString(), "/tv.html")
         }
+
+        runSync(showBusyMessage = false)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        runSync(showBusyMessage = false)
+    }
+
+    private fun runSync(showBusyMessage: Boolean) {
+        val base = normalizeBase(serverUrlInput.text.toString())
+        if (base.isEmpty()) {
+            syncStatus.text = "Enter a valid server URL first."
+            return
+        }
+
+        prefs.edit().putString("server_url", base).apply()
+        if (showBusyMessage) syncStatus.text = "Syncing installed apps to server..."
+
+        Thread {
+            val apps = collectInstalledAppNames()
+            val success = postInstalledApps(base, apps)
+            runOnUiThread {
+                syncStatus.text = if (success) {
+                    "Synced ${apps.size} apps. Uploader pages now know your TV apps."
+                } else {
+                    "Sync failed. Check server URL and ensure same Wi‑Fi network."
+                }
+            }
+        }.start()
     }
 
     private fun collectInstalledAppNames(): List<String> {

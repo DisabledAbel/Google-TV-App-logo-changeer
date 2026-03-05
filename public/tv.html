@@ -85,7 +85,8 @@
       fetch('/api/logo')
         .then((response) => response.json())
         .then((data) => {
-          if (data && data.logoDataUrl) {
+          const initialLogo = data?.logoDataUrl || data?.currentLogo;
+          if (data && initialLogo) {
             renderApproved(data);
           }
         })

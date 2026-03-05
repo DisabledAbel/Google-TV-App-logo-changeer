@@ -133,14 +133,17 @@ async function requestHandler(req, res) {
   }
 
   if (req.method === 'GET' && url.pathname === '/api/apps') {
-    sendJson(res, 200, { apps: currentState.installedApps, updatedAt: currentState.appsUpdatedAt });
+    sendJson(res, 200, { apps: currentState.installedApps, knownApps: currentState.installedApps, updatedAt: currentState.appsUpdatedAt });
     return;
   }
 
   if (req.method === 'POST' && url.pathname === '/api/apps') {
     try {
       const body = await parseBody(req);
-      const incomingApps = Array.isArray(body.apps) ? body.apps : [];
+      const incomingApps = Array.isArray(body.apps) ? body.apps
+        : Array.isArray(body.installedApps) ? body.installedApps
+        : Array.isArray(body.knownApps) ? body.knownApps
+        : [];
       const normalizedApps = [...new Set(incomingApps
         .filter((app) => typeof app === 'string')
         .map((app) => app.trim())
