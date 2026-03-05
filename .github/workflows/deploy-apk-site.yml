@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - work
+  pull_request:
 
 permissions:
   contents: read
