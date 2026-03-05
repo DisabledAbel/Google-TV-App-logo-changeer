@@ -48,12 +48,12 @@ class MainActivity : AppCompatActivity() {
             openPage(serverUrlInput.text.toString(), "/tv.html")
         }
 
-        runSync(showBusyMessage = false)
+        maybeAutoSync()
     }
 
     override fun onResume() {
         super.onResume()
-        runSync(showBusyMessage = false)
+        maybeAutoSync()
     }
 
     private fun runSync(showBusyMessage: Boolean) {
@@ -70,6 +70,7 @@ class MainActivity : AppCompatActivity() {
             val apps = collectInstalledAppNames()
             val success = postInstalledApps(base, apps)
             runOnUiThread {
+                prefs.edit().putLong("last_sync_ts", System.currentTimeMillis()).apply()
                 syncStatus.text = if (success) {
                     "Synced ${apps.size} apps. Uploader pages now know your TV apps."
                 } else {

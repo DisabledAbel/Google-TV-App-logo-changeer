@@ -53,7 +53,7 @@
       let pendingPayload = null;
 
       function renderApproved(payload) {
-        target.textContent = `Target app: ${payload.appName || 'YouTube'}`;
+        target.textContent = `Target app: ${payload.appName || payload.targetApp || 'YouTube'}`;
         const dataUrl = payload.logoDataUrl || payload.currentLogo;
         if (dataUrl) {
           logo.src = dataUrl;
@@ -67,7 +67,7 @@
 
       function showPrompt(payload) {
         pendingPayload = payload;
-        promptText.textContent = `A new image was uploaded for ${payload.appName || 'YouTube'}. Replace app picture now?`;
+        promptText.textContent = `A new image was uploaded for ${payload.appName || payload.targetApp || 'YouTube'}. Replace app picture now?`;
         prompt.style.display = 'flex';
       }
 

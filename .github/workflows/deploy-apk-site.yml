@@ -50,14 +50,24 @@ jobs:
           cp docs/index.html _site/index.html
           cp android/app/build/outputs/apk/debug/app-debug.apk _site/app-debug.apk
 
+      - name: Upload APK artifact (PR)
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk-pr
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
       - name: Setup Pages
+        if: github.event_name != 'pull_request'
         uses: actions/configure-pages@v5
 
       - name: Upload Pages artifact
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
           path: _site
 
       - name: Deploy to GitHub Pages
+        if: github.event_name != 'pull_request'
         id: deployment
         uses: actions/deploy-pages@v4

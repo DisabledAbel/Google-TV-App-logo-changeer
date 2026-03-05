@@ -127,6 +127,11 @@ async function requestHandler(req, res) {
     return;
   }
 
+  if (req.method === 'GET' && url.pathname === '/health') {
+    sendJson(res, 200, { ok: true });
+    return;
+  }
+
   if (req.method === 'GET' && url.pathname === '/api/logo') {
     sendJson(res, 200, toClientState(currentState));
     return;
@@ -147,7 +152,7 @@ async function requestHandler(req, res) {
       const normalizedApps = [...new Set(incomingApps
         .filter((app) => typeof app === 'string')
         .map((app) => app.trim())
-        .filter(Boolean))];
+        .filter(Boolean))].slice(0, 300);
 
       if (!normalizedApps.length) {
         sendJson(res, 400, { error: 'apps must be a non-empty string array.' });

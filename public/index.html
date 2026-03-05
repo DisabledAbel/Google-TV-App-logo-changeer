@@ -74,7 +74,7 @@
         try {
           const response = await fetch('/api/apps');
           const data = await response.json();
-          setOptions(data.apps);
+          setOptions(data.apps || data.knownApps);
         } catch {
           try {
             const logoRes = await fetch('/api/logo');
