@@ -45,10 +45,12 @@
       const preview = document.getElementById('preview');
 
       let selectedDataUrl = null;
+      let selectedApp = null;
 
       function setOptions(apps) {
         const safeApps = Array.isArray(apps) && apps.length ? apps : ['YouTube', 'Netflix', 'Prime Video', 'Disney+', 'Plex'];
         appTarget.innerHTML = safeApps.map((app) => `<option>${app}</option>`).join('');
+        selectedApp = safeApps[0] || null;
       }
 
       async function loadApps() {
@@ -92,7 +94,7 @@
           const response = await fetch('/api/logo', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ logoDataUrl: selectedDataUrl, appName: appTarget.value })
+            body: JSON.stringify({ logoDataUrl: selectedDataUrl, appName: appTarget.value || selectedApp || "YouTube" })
           });
 
           const result = await response.json();

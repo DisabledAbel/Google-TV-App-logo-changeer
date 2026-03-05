@@ -81,7 +81,7 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 syncStatus.text = if (success) {
                     prefs.edit().putLong("last_sync_ts", System.currentTimeMillis()).apply()
-                    "Synced ${apps.size} apps. Uploader pages now know your TV apps."
+                    "Synced ${apps.size} installed apps. Uploader pages now show your full device app list."
                 } else {
                     "Sync failed. Check server URL and ensure same Wi‑Fi network."
                 }
@@ -90,23 +90,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun collectInstalledAppNames(): List<String> {
-        val apps = (collectActivitiesByCategory(Intent.CATEGORY_LAUNCHER) +
-            collectActivitiesByCategory(Intent.CATEGORY_LEANBACK_LAUNCHER))
+        @Suppress("DEPRECATION")
+        val apps = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+            .map { appInfo ->
+                val label = packageManager.getApplicationLabel(appInfo).toString().trim()
+                val pkg = appInfo.packageName.trim()
+                if (label.isNotEmpty()) "$label ($pkg)" else pkg
+            }
+            .filter { it.isNotEmpty() }
             .distinct()
             .sorted()
 
-        return if (apps.isNotEmpty()) apps else listOf("YouTube")
-    }
-
-    private fun collectActivitiesByCategory(category: String): List<String> {
-        val pm = packageManager
-        val launchIntent = Intent(Intent.ACTION_MAIN, null).apply {
-            addCategory(category)
-        }
-
-        return pm.queryIntentActivities(launchIntent, PackageManager.MATCH_ALL)
-            .mapNotNull { it.loadLabel(pm)?.toString()?.trim() }
-            .filter { it.isNotEmpty() }
+        return if (apps.isNotEmpty()) apps else listOf("YouTube (com.google.android.youtube.tv)")
     }
 
     private fun postInstalledApps(base: String, apps: List<String>): Boolean {
