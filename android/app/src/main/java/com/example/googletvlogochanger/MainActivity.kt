@@ -34,28 +34,34 @@ class MainActivity : AppCompatActivity() {
 
         wifiHint.text = "Phone/PC and Google TV must be on the same Wi‑Fi. Use your local server IP (example: http://192.168.1.100:3000)."
 
-        syncAppsButton.setOnClickListener {
+        fun runSync(showBusyMessage: Boolean = true) {
             val base = normalizeBase(serverUrlInput.text.toString())
             if (base.isEmpty()) {
                 syncStatus.text = "Enter a valid server URL first."
-                return@setOnClickListener
+                return
             }
 
             prefs.edit().putString("server_url", base).apply()
-            syncStatus.text = "Syncing installed apps to server..."
+            if (showBusyMessage) syncStatus.text = "Syncing installed apps to server..."
 
             Thread {
                 val apps = collectInstalledAppNames()
                 val success = postInstalledApps(base, apps)
                 runOnUiThread {
                     syncStatus.text = if (success) {
-                        "Synced ${apps.size} apps. Uploader pages will now know your TV apps."
+                        "Synced ${apps.size} apps. Uploader pages now know your TV apps."
                     } else {
                         "Sync failed. Check server URL and ensure same Wi‑Fi network."
                     }
                 }
             }.start()
         }
+
+        syncAppsButton.setOnClickListener {
+            runSync()
+        }
+
+        runSync(showBusyMessage = false)
 
         openUpload.setOnClickListener {
             openPage(serverUrlInput.text.toString(), "/")
