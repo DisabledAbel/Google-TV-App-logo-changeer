@@ -56,6 +56,15 @@ class MainActivity : AppCompatActivity() {
         maybeAutoSync()
     }
 
+
+    private fun maybeAutoSync() {
+        val now = System.currentTimeMillis()
+        val last = prefs.getLong("last_sync_ts", 0L)
+        if (now - last > 30_000L) {
+            runSync(showBusyMessage = false)
+        }
+    }
+
     private fun runSync(showBusyMessage: Boolean) {
         val base = normalizeBase(serverUrlInput.text.toString())
         if (base.isEmpty()) {
