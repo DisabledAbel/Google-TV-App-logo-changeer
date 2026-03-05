@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>TV Screen</title>
+    <style>
+      body { margin:0; background:#000; color:#fff; font-family:Arial,sans-serif; overflow:hidden; }
+      .screen { width:100vw; height:100vh; display:flex; align-items:center; justify-content:center; position:relative; }
+      img { max-width:86vw; max-height:86vh; object-fit:contain; }
+      .empty { color:#a7b1c2; font-size:2rem; text-align:center; }
+      .badge { position:absolute; top:16px; left:16px; background:rgba(17,25,40,.7); border:1px solid rgba(255,255,255,.2); padding:6px 10px; border-radius:8px; font-size:14px; }
+    </style>
+  </head>
+  <body>
+    <div class="screen">
+      <div class="badge">Google TV Logo Receiver</div>
+      <img id="logo" alt="Current logo" style="display:none" />
+      <div id="empty" class="empty">Waiting for logo upload...</div>
+    </div>
+
+    <script>
+      const logo = document.getElementById('logo');
+      const empty = document.getElementById('empty');
+
+      function render(dataUrl) {
+        if (dataUrl) {
+          logo.src = dataUrl;
+          logo.style.display = 'block';
+          empty.style.display = 'none';
+        } else {
+          logo.style.display = 'none';
+          empty.style.display = 'block';
+        }
+      }
+
+      fetch('/api/logo')
+        .then((response) => response.json())
+        .then((data) => render(data.logoDataUrl))
+        .catch(() => {});
+
+      const eventSource = new EventSource('/events');
+      eventSource.addEventListener('logo', (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          render(payload.logoDataUrl);
+        } catch {}
+      });
+    </script>
+  </body>
+</html>
