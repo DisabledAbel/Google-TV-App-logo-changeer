@@ -54,8 +54,9 @@
 
       function renderApproved(payload) {
         target.textContent = `Target app: ${payload.appName || 'YouTube'}`;
-        if (payload.logoDataUrl) {
-          logo.src = payload.logoDataUrl;
+        const dataUrl = payload.logoDataUrl || payload.currentLogo;
+        if (dataUrl) {
+          logo.src = dataUrl;
           logo.style.display = 'block';
           empty.style.display = 'none';
         } else {
@@ -94,7 +95,8 @@
       eventSource.addEventListener('logo', (event) => {
         try {
           const payload = JSON.parse(event.data);
-          if (payload && payload.logoDataUrl) {
+          const dataUrl = payload?.logoDataUrl || payload?.currentLogo;
+          if (payload && dataUrl) {
             showPrompt(payload);
           }
         } catch {}

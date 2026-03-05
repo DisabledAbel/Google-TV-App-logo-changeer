@@ -38,8 +38,15 @@ function sendJson(res, statusCode, payload) {
   res.end(body);
 }
 
+function toClientState(state) {
+  return {
+    ...state,
+    currentLogo: state.logoDataUrl
+  };
+}
+
 function broadcastLogoUpdate() {
-  const eventPayload = `event: logo\ndata: ${JSON.stringify(currentState)}\n\n`;
+  const eventPayload = `event: logo\ndata: ${JSON.stringify(toClientState(currentState))}\n\n`;
   for (const client of clients) {
     client.write(eventPayload);
   }
@@ -111,15 +118,16 @@ async function requestHandler(req, res) {
   }
 
   if (req.method === 'GET' && url.pathname === '/api/logo') {
-    sendJson(res, 200, currentState);
+    sendJson(res, 200, toClientState(currentState));
     return;
   }
 
   if (req.method === 'POST' && url.pathname === '/api/logo') {
     try {
       const body = await parseBody(req);
-      const logoDataUrl = body.logoDataUrl;
-      const appName = typeof body.appName === 'string' && body.appName.trim() ? body.appName.trim() : 'YouTube';
+      const logoDataUrl = body.logoDataUrl || body.currentLogo;
+      const requestedAppName = body.appName || body.targetApp;
+      const appName = typeof requestedAppName === 'string' && requestedAppName.trim() ? requestedAppName.trim() : 'YouTube';
 
       if (typeof logoDataUrl !== 'string' || !logoDataUrl.startsWith('data:image/')) {
         sendJson(res, 400, { error: 'logoDataUrl must be a valid image data URL.' });
@@ -149,7 +157,7 @@ async function requestHandler(req, res) {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
-    res.write(`event: logo\ndata: ${JSON.stringify(currentState)}\n\n`);
+    res.write(`event: logo\ndata: ${JSON.stringify(toClientState(currentState))}\n\n`);
 
     clients.add(res);
     req.on('close', () => clients.delete(res));
