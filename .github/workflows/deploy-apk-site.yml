@@ -6,22 +6,11 @@ on:
     branches:
       - main
       - work
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: true
+  pull_request:
 
 jobs:
-  build-and-deploy:
+  build-apk:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
       - name: Checkout
@@ -43,11 +32,42 @@ jobs:
         working-directory: android
         run: gradle assembleDebug
 
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
+  deploy-pages:
+    if: github.event_name != 'pull_request'
+    needs: build-apk
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-debug-apk
+          path: artifacts
+
       - name: Prepare Pages artifact
         run: |
           mkdir -p _site
           cp docs/index.html _site/index.html
-          cp android/app/build/outputs/apk/debug/app-debug.apk _site/app-debug.apk
+          cp artifacts/app-debug.apk _site/app-debug.apk
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

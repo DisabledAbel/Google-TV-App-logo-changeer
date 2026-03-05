@@ -12,8 +12,10 @@
       .upload-zone { border:2px dashed #42527a; border-radius:12px; padding:20px; text-align:center; margin-top:10px; }
       .upload-zone.active { border-color:#6bb1ff; background:#111a2e; }
       .row { margin-top: 12px; }
-      button { background:#4c9ffe; border:none; color:#fff; padding:10px 16px; border-radius:8px; cursor:pointer; font-size:16px; }
+      button, select { font-size:16px; }
+      button { background:#4c9ffe; border:none; color:#fff; padding:10px 16px; border-radius:8px; cursor:pointer; }
       button:disabled { opacity:.6; cursor:not-allowed; }
+      select { background:#0f141f; border:1px solid #2f3b53; color:#fff; padding:10px; border-radius:8px; }
       .preview { margin-top:16px; background:#0f141f; border:1px solid #2f3b53; border-radius:8px; padding:10px; min-height:220px; display:flex; align-items:center; justify-content:center; }
       img { max-width:100%; max-height:320px; }
       .hint { color:#a5b7d6; font-size:14px; }
@@ -36,6 +38,11 @@
           <p class="hint">PNG, JPG, SVG, or any browser-supported image format</p>
         </div>
 
+        <div class="row">
+          <label for="appTarget" class="hint">App to replace on TV (auto-synced from TV app list)</label><br />
+          <select id="appTarget"></select>
+        </div>
+
         <div class="row"><button id="upload" disabled>Upload to TV</button></div>
         <div class="row hint" id="status">Select an image to begin.</div>
         <div class="preview"><img id="preview" alt="preview" style="display:none" /></div>
@@ -51,11 +58,33 @@
       const fileInput = document.getElementById('file');
       const pickButton = document.getElementById('pick');
       const uploadButton = document.getElementById('upload');
+      const appTarget = document.getElementById('appTarget');
       const statusEl = document.getElementById('status');
       const preview = document.getElementById('preview');
       const zone = document.getElementById('zone');
 
       let selectedDataUrl = null;
+
+      function setOptions(apps) {
+        const safeApps = Array.isArray(apps) && apps.length ? apps : ['YouTube', 'Netflix', 'Prime Video', 'Disney+', 'Plex'];
+        appTarget.innerHTML = safeApps.map((app) => `<option>${app}</option>`).join('');
+      }
+
+      async function loadApps() {
+        try {
+          const response = await fetch('/api/apps');
+          const data = await response.json();
+          setOptions(data.apps || data.knownApps);
+        } catch {
+          try {
+            const logoRes = await fetch('/api/logo').catch(() => fetch('/api/state'));
+            const logoData = await logoRes.json();
+            setOptions(logoData.knownApps || logoData.installedApps);
+          } catch {
+            setOptions();
+          }
+        }
+      }
 
       function setFile(file) {
         if (!file || !file.type.startsWith('image/')) {
@@ -100,19 +129,21 @@
           const response = await fetch('/api/logo', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ logoDataUrl: selectedDataUrl })
+            body: JSON.stringify({ logoDataUrl: selectedDataUrl, appName: appTarget.value })
           });
 
           const result = await response.json();
           if (!response.ok) throw new Error(result.error || 'Upload failed');
 
-          statusEl.textContent = 'Uploaded! The TV screen should update immediately.';
+          statusEl.textContent = `Uploaded for ${appTarget.value}! TV will prompt to replace app picture.`;
         } catch (error) {
           statusEl.textContent = `Error: ${error.message}`;
         } finally {
           uploadButton.disabled = false;
         }
       });
+
+      loadApps();
     </script>
   </body>
 </html>
