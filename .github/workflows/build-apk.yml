@@ -2,11 +2,14 @@ name: Build Android APK
 
 on:
   workflow_dispatch:
+  pull_request:
   push:
     branches:
       - main
       - work
-  pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   build-apk:
@@ -41,3 +44,4 @@ jobs:
         with:
           name: google-tv-logo-changer-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

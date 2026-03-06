@@ -6,7 +6,11 @@ on:
     branches:
       - main
       - work
-  pull_request:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
   build-apk:
@@ -41,15 +45,11 @@ jobs:
         with:
           name: app-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
 
   deploy-pages:
-    if: github.event_name != 'pull_request'
     needs: build-apk
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
