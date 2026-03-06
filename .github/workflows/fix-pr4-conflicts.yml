@@ -42,24 +42,26 @@ jobs:
           if [ "$MERGE_EXIT" -ne 0 ]; then
             echo "Merge reported conflicts. Resolving known files using target branch versions (ours)."
 
-            # Resolve the recurring conflict set explicitly
-            git checkout --ours .github/workflows/deploy-apk-site.yml || true
-            git checkout --ours android/app/src/main/AndroidManifest.xml || true
-            git checkout --ours android/app/src/main/java/com/example/googletvlogochanger/MainActivity.kt || true
-            git checkout --ours android/app/src/main/res/layout/activity_main.xml || true
-            git checkout --ours public/admin.html || true
-            git checkout --ours public/index.html || true
-            git checkout --ours public/tv.html || true
-            git checkout --ours server.js || true
+            # Resolve the recurring conflict set explicitly (only when files are present).
+            conflict_candidates=(
+              .github/workflows/deploy-apk-site.yml
+              android/app/src/main/AndroidManifest.xml
+              android/app/src/main/java/com/example/googletvlogochanger/MainActivity.kt
+              android/app/src/main/res/layout/activity_main.xml
+              public/admin.html
+              public/index.html
+              public/tv.html
+              server.js
+            )
 
-            git add .github/workflows/deploy-apk-site.yml \
-              android/app/src/main/AndroidManifest.xml \
-              android/app/src/main/java/com/example/googletvlogochanger/MainActivity.kt \
-              android/app/src/main/res/layout/activity_main.xml \
-              public/admin.html \
-              public/index.html \
-              public/tv.html \
-              server.js || true
+            staged_any=0
+            for file in "${conflict_candidates[@]}"; do
+              if [ -e "$file" ] || git ls-files --error-unmatch "$file" >/dev/null 2>&1; then
+                git checkout --ours -- "$file" || true
+                git add -- "$file" || true
+                staged_any=1
+              fi
+            done
 
             # If any conflict markers remain, fail fast.
             if git grep -n "^<<<<<<<\|^=======\|^>>>>>>>" -- . ":(exclude).git"; then
@@ -67,7 +69,11 @@ jobs:
               exit 1
             fi
 
-            git commit -m "Auto-resolve known PR4 conflict files after merge" || true
+            if [ "$staged_any" -eq 1 ]; then
+              git commit -m "Auto-resolve known PR4 conflict files after merge" || true
+            else
+              echo "No known conflict files were present to stage."
+            fi
           fi
 
       - name: Push changes
