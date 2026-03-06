@@ -65,6 +65,19 @@ jobs:
               fi
             done
 
+            # Resolve any remaining conflicted files by preferring target branch (ours).
+            unresolved=$(git diff --name-only --diff-filter=U)
+            if [ -n "$unresolved" ]; then
+              echo "Applying fallback resolution (ours) for remaining conflicts:"
+              echo "$unresolved"
+              while IFS= read -r file; do
+                [ -z "$file" ] && continue
+                git checkout --ours -- "$file"
+                git add -- "$file"
+                staged_any=1
+              done <<< "$unresolved"
+            fi
+
             # If unmerged paths remain, fail fast with explicit file list.
             unresolved=$(git diff --name-only --diff-filter=U)
             if [ -n "$unresolved" ]; then
