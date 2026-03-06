@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Google TV Logo Changer</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 0; background:#0e1118; color:#fff; }
+      .wrap { max-width: 920px; margin: 32px auto; padding: 20px; }
+      .hero { margin-bottom: 18px; }
+      .card { background:#1a2030; border-radius:14px; padding:22px; box-shadow:0 12px 30px rgba(0,0,0,.35); }
+      .upload-zone { border:2px dashed #42527a; border-radius:12px; padding:20px; text-align:center; margin-top:10px; }
+      .upload-zone.active { border-color:#6bb1ff; background:#111a2e; }
+      .row { margin-top: 14px; }
+      button { font-size:16px; background:#4c9ffe; border:none; color:#fff; padding:10px 16px; border-radius:8px; cursor:pointer; }
+      button:disabled { opacity:.6; cursor:not-allowed; }
+      .preview { margin-top:16px; background:#0f141f; border:1px solid #2f3b53; border-radius:8px; padding:10px; min-height:220px; display:flex; align-items:center; justify-content:center; }
+      img { max-width:100%; max-height:320px; }
+      .hint { color:#a5b7d6; font-size:14px; }
+      .links { margin-top:16px; display:flex; gap:10px; flex-wrap:wrap; }
+      .links a { color:#7fc1ff; }
+      code { background:#0f141f; padding:2px 6px; border-radius:4px; }
+      .apps-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; margin-top:10px; }
+      .app-chip { background:#10182b; border:1px solid #334155; color:#e5e7eb; border-radius:10px; padding:10px; text-align:center; cursor:pointer; }
+      .app-chip.selected { border-color:#60a5fa; background:#132238; box-shadow:0 0 0 1px #60a5fa inset; }
+      .selected-app { margin-top:8px; color:#93c5fd; font-size:14px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="hero">
+        <h1>Upload a logo from your browser</h1>
+        <p class="hint">Button-mapper style: select the app tile first, then upload a logo image.</p>
+      </div>
+
+      <div class="card">
+        <input id="file" type="file" accept="image/*" style="display:none" />
+        <div id="zone" class="upload-zone">
+          <p><strong>Drop image here</strong> or <button id="pick" type="button">Choose Image</button></p>
+          <p class="hint">PNG, JPG, SVG, or any browser-supported image format</p>
+        </div>
+
+        <div class="row">
+          <div class="hint">Your TV apps</div>
+          <div id="appsGrid" class="apps-grid"></div>
+          <div id="selectedAppText" class="selected-app">Selected app: none</div>
+        </div>
+
+        <div class="row"><button id="upload" disabled>Upload to TV</button></div>
+        <div class="row hint" id="status">Choose app + image to begin.</div>
+        <div class="preview"><img id="preview" alt="preview" style="display:none" /></div>
+
+        <div class="links hint">
+          <a href="/tv.html" target="_blank" rel="noreferrer">Open TV screen</a>
+          <a href="/admin.html">Legacy upload page</a>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const fileInput = document.getElementById('file');
+      const pickButton = document.getElementById('pick');
+      const uploadButton = document.getElementById('upload');
+      const statusEl = document.getElementById('status');
+      const preview = document.getElementById('preview');
+      const zone = document.getElementById('zone');
+      const appsGrid = document.getElementById('appsGrid');
+      const selectedAppText = document.getElementById('selectedAppText');
+
+      let selectedDataUrl = null;
+      let selectedApp = null;
+
+      function updateUploadButton() {
+        uploadButton.disabled = !(selectedDataUrl && selectedApp);
+      }
+
+      function renderApps(apps) {
+        const safeApps = Array.isArray(apps) && apps.length ? apps : ['YouTube', 'Netflix', 'Prime Video', 'Disney+', 'Plex'];
+        appsGrid.innerHTML = '';
+        safeApps.forEach((app) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = `app-chip${selectedApp === app ? ' selected' : ''}`;
+          btn.textContent = app;
+          btn.addEventListener('click', () => {
+            selectedApp = app;
+            selectedAppText.textContent = `Selected app: ${selectedApp}`;
+            [...appsGrid.querySelectorAll('.app-chip')].forEach((chip) => chip.classList.remove('selected'));
+            btn.classList.add('selected');
+            updateUploadButton();
+          });
+          appsGrid.appendChild(btn);
+        });
+
+        if (!selectedApp && safeApps[0]) {
+          selectedApp = safeApps[0];
+          selectedAppText.textContent = `Selected app: ${selectedApp}`;
+          appsGrid.firstChild?.classList.add('selected');
+        }
+        updateUploadButton();
+      }
+
+      async function loadApps() {
+        try {
+          const response = await fetch('/api/apps');
+          const data = await response.json();
+          renderApps(data.apps || data.knownApps);
+        } catch {
+          try {
+            const logoRes = await fetch('/api/logo').catch(() => fetch('/api/state'));
+            const logoData = await logoRes.json();
+            renderApps(logoData.knownApps || logoData.installedApps);
+          } catch {
+            renderApps();
+          }
+        }
+      }
+
+      function setFile(file) {
+        if (!file || !file.type.startsWith('image/')) {
+          statusEl.textContent = 'Please choose an image file.';
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          selectedDataUrl = reader.result;
+          preview.src = selectedDataUrl;
+          preview.style.display = 'block';
+          statusEl.textContent = `Selected image: ${file.name}`;
+          updateUploadButton();
+        };
+        reader.readAsDataURL(file);
+      }
+
+      pickButton.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', () => setFile(fileInput.files?.[0]));
+
+      zone.addEventListener('dragover', (event) => {
+        event.preventDefault();
+        zone.classList.add('active');
+      });
+      zone.addEventListener('dragleave', () => zone.classList.remove('active'));
+      zone.addEventListener('drop', (event) => {
+        event.preventDefault();
+        zone.classList.remove('active');
+        setFile(event.dataTransfer?.files?.[0]);
+      });
+
+      uploadButton.addEventListener('click', async () => {
+        if (!selectedDataUrl || !selectedApp) return;
+
+        uploadButton.disabled = true;
+        statusEl.textContent = 'Uploading...';
+
+        try {
+          const response = await fetch('/api/logo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ logoDataUrl: selectedDataUrl, appName: selectedApp })
+          });
+
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || 'Upload failed');
+
+          statusEl.textContent = `Uploaded for ${selectedApp}! TV will prompt to replace app picture.`;
+        } catch (error) {
+          statusEl.textContent = `Error: ${error.message}`;
+        } finally {
+          updateUploadButton();
+        }
+      });
+
+      loadApps();
+    </script>
+  </body>
+</html>

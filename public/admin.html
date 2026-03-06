@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Logo Uploader</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 0; background:#10131a; color:#fff; }
+      .wrap { max-width: 720px; margin: 40px auto; padding: 24px; }
+      .card { background:#1e2430; border-radius:12px; padding:20px; box-shadow:0 10px 30px rgba(0,0,0,.3); }
+      .row { margin-top: 14px; }
+      input, button, select { font-size:16px; }
+      button { background:#4c9ffe; border:none; color:#fff; padding:10px 16px; border-radius:8px; cursor:pointer; }
+      button:disabled { opacity:.6; cursor:not-allowed; }
+      select { background:#0f141f; border:1px solid #2f3b53; color:#fff; padding:10px; border-radius:8px; }
+      .preview { margin-top:18px; background:#0f141f; border:1px solid #2f3b53; border-radius:8px; padding:12px; min-height:220px; display:flex; align-items:center; justify-content:center; }
+      img { max-width:100%; max-height:300px; }
+      .hint { color:#9fb3d6; font-size:14px; }
+      code { background:#0f141f; padding:2px 6px; border-radius:4px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Google TV Logo Changer</h1>
+      <p class="hint">Upload an image here. Devices must use the same server URL/IP on the same Wi‑Fi; any screen open on <code>/tv.html</code> updates instantly.</p>
+      <div class="card">
+        <div class="row"><input id="file" type="file" accept="image/*" /></div>
+
+        <div class="row">
+          <label for="appTarget" class="hint">App to replace on TV (auto-synced)</label><br />
+          <select id="appTarget"></select>
+        </div>
+
+        <div class="row"><button id="upload" disabled>Upload to TV</button></div>
+        <div class="row hint" id="status">Choose an image to start.</div>
+        <div class="preview"><img id="preview" alt="preview" style="display:none" /></div>
+      </div>
+    </div>
+
+    <script>
+      const fileInput = document.getElementById('file');
+      const uploadButton = document.getElementById('upload');
+      const appTarget = document.getElementById('appTarget');
+      const statusEl = document.getElementById('status');
+      const preview = document.getElementById('preview');
+
+      let selectedDataUrl = null;
+      let selectedApp = null;
+
+      function setOptions(apps) {
+        const safeApps = Array.isArray(apps) && apps.length ? apps : ['YouTube', 'Netflix', 'Prime Video', 'Disney+', 'Plex'];
+        appTarget.innerHTML = safeApps.map((app) => `<option>${app}</option>`).join('');
+        selectedApp = safeApps[0] || null;
+      }
+
+      async function loadApps() {
+        try {
+          const response = await fetch('/api/apps');
+          const data = await response.json();
+          setOptions(data.apps || data.knownApps);
+        } catch {
+          try {
+            const logoRes = await fetch('/api/logo').catch(() => fetch('/api/state'));
+            const logoData = await logoRes.json();
+            setOptions(logoData.knownApps || logoData.installedApps);
+          } catch {
+            setOptions();
+          }
+        }
+      }
+
+      fileInput.addEventListener('change', () => {
+        const file = fileInput.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          selectedDataUrl = reader.result;
+          preview.src = selectedDataUrl;
+          preview.style.display = 'block';
+          uploadButton.disabled = false;
+          statusEl.textContent = `Selected: ${file.name}`;
+        };
+        reader.readAsDataURL(file);
+      });
+
+      uploadButton.addEventListener('click', async () => {
+        if (!selectedDataUrl) return;
+
+        uploadButton.disabled = true;
+        statusEl.textContent = 'Uploading...';
+
+        try {
+          const response = await fetch('/api/logo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ logoDataUrl: selectedDataUrl, appName: appTarget.value || selectedApp || "YouTube" })
+          });
+
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || 'Upload failed');
+
+          statusEl.textContent = `Uploaded for ${appTarget.value}! TV will prompt to replace app picture.`;
+        } catch (error) {
+          statusEl.textContent = `Error: ${error.message}`;
+        } finally {
+          uploadButton.disabled = false;
+        }
+      });
+
+      loadApps();
+    </script>
+  </body>
+</html>

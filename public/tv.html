@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>TV Screen</title>
+    <style>
+      body { margin:0; background:#000; color:#fff; font-family:Arial,sans-serif; overflow:hidden; }
+      .screen { width:100vw; height:100vh; display:flex; align-items:center; justify-content:center; position:relative; }
+      img { max-width:80vw; max-height:80vh; object-fit:contain; }
+      .empty { color:#a7b1c2; font-size:2rem; text-align:center; }
+      .badge { position:absolute; top:16px; left:16px; background:rgba(17,25,40,.7); border:1px solid rgba(255,255,255,.2); padding:6px 10px; border-radius:8px; font-size:14px; }
+      .target { position:absolute; top:16px; right:16px; background:rgba(25,42,78,.8); border:1px solid rgba(132,180,255,.5); padding:6px 10px; border-radius:8px; font-size:14px; }
+
+      .apps-panel { position:absolute; left:16px; bottom:16px; width:min(520px,92vw); background:rgba(10,14,23,.86); border:1px solid rgba(121,142,176,.5); border-radius:12px; padding:10px; }
+      .apps-title { font-size:13px; color:#c5d4ef; margin-bottom:8px; }
+      .apps-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:8px; max-height:180px; overflow:auto; }
+      .app-chip { border:none; border-radius:8px; padding:8px; background:#1f2a44; color:#fff; cursor:pointer; font-size:13px; }
+      .app-chip.selected { background:#2563eb; box-shadow:0 0 0 1px #93c5fd inset; }
+
+      .prompt { position:absolute; inset:0; background:rgba(0,0,0,.72); display:none; align-items:center; justify-content:center; }
+      .panel { width:min(92vw,700px); background:#111827; border:1px solid #334155; border-radius:12px; padding:18px; box-shadow:0 20px 50px rgba(0,0,0,.5); }
+      .panel h2 { margin-top:0; }
+      .actions { display:flex; gap:10px; }
+      button { border:none; border-radius:8px; padding:10px 14px; font-size:16px; cursor:pointer; }
+      .primary { background:#3b82f6; color:#fff; }
+      .muted { background:#334155; color:#fff; }
+      .status { margin-top:10px; color:#9fb3d6; font-size:14px; }
+    </style>
+  </head>
+  <body>
+    <div class="screen">
+      <div class="badge">Google TV Logo Receiver</div>
+      <div id="target" class="target">Target app: YouTube</div>
+      <img id="logo" alt="Current logo" style="display:none" />
+      <div id="empty" class="empty">Waiting for logo upload...</div>
+
+      <div class="apps-panel">
+        <div class="apps-title">Pick app on TV (Button Mapper style)</div>
+        <div id="appsGrid" class="apps-grid"></div>
+      </div>
+
+      <div id="prompt" class="prompt">
+        <div class="panel">
+          <h2>Replace app picture?</h2>
+          <p id="promptText">A new image was uploaded.</p>
+          <div class="actions">
+            <button id="accept" class="primary">Use this image</button>
+            <button id="reject" class="muted">Keep current</button>
+          </div>
+          <div class="status">You can choose the app in the bottom-left app grid.</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const logo = document.getElementById('logo');
+      const empty = document.getElementById('empty');
+      const prompt = document.getElementById('prompt');
+      const promptText = document.getElementById('promptText');
+      const target = document.getElementById('target');
+      const accept = document.getElementById('accept');
+      const reject = document.getElementById('reject');
+      const appsGrid = document.getElementById('appsGrid');
+
+      let pendingPayload = null;
+      let selectedApp = 'YouTube';
+
+      function displayTarget() {
+        target.textContent = `Target app: ${selectedApp}`;
+      }
+
+      function renderApps(apps) {
+        const safeApps = Array.isArray(apps) && apps.length ? apps : ['YouTube', 'Netflix', 'Prime Video', 'Disney+', 'Plex'];
+        if (!safeApps.includes(selectedApp)) selectedApp = safeApps[0];
+        appsGrid.innerHTML = '';
+
+        safeApps.forEach((app) => {
+          const chip = document.createElement('button');
+          chip.type = 'button';
+          chip.className = `app-chip${selectedApp === app ? ' selected' : ''}`;
+          chip.textContent = app;
+          chip.addEventListener('click', () => {
+            selectedApp = app;
+            [...appsGrid.querySelectorAll('.app-chip')].forEach((el) => el.classList.remove('selected'));
+            chip.classList.add('selected');
+            displayTarget();
+          });
+          appsGrid.appendChild(chip);
+        });
+        displayTarget();
+      }
+
+      function renderApproved(payload) {
+        const dataUrl = payload.logoDataUrl || payload.currentLogo;
+        if (dataUrl) {
+          logo.src = dataUrl;
+          logo.style.display = 'block';
+          empty.style.display = 'none';
+        } else {
+          logo.style.display = 'none';
+          empty.style.display = 'block';
+        }
+      }
+
+      function showPrompt(payload) {
+        pendingPayload = payload;
+        const uploadApp = payload.appName || payload.targetApp || payload.app || 'Unknown app';
+        promptText.textContent = `New image received from uploader for ${uploadApp}. Apply to selected TV app (${selectedApp})?`;
+        prompt.style.display = 'flex';
+      }
+
+      accept.addEventListener('click', () => {
+        if (pendingPayload) {
+          pendingPayload.appName = selectedApp;
+          renderApproved(pendingPayload);
+        }
+        pendingPayload = null;
+        prompt.style.display = 'none';
+      });
+
+      reject.addEventListener('click', () => {
+        pendingPayload = null;
+        prompt.style.display = 'none';
+      });
+
+      async function initApps() {
+        try {
+          const res = await fetch('/api/apps');
+          const data = await res.json();
+          renderApps(data.apps || data.knownApps);
+        } catch {
+          renderApps();
+        }
+      }
+
+      fetch('/api/logo').catch(() => fetch('/api/state'))
+        .then((response) => response.json())
+        .then((data) => {
+          const initialLogo = data?.logoDataUrl || data?.currentLogo;
+          if (data && initialLogo) {
+            renderApproved(data);
+          }
+          if (data?.knownApps || data?.installedApps) {
+            renderApps(data.knownApps || data.installedApps);
+          }
+        })
+        .catch(() => {});
+
+      const eventSource = new EventSource('/events');
+      eventSource.addEventListener('logo', (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          const dataUrl = payload?.logoDataUrl || payload?.currentLogo;
+          if (payload?.knownApps || payload?.installedApps) {
+            renderApps(payload.knownApps || payload.installedApps);
+          }
+          if (payload && dataUrl) showPrompt(payload);
+        } catch {}
+      });
+
+      initApps();
+    </script>
+  </body>
+</html>
