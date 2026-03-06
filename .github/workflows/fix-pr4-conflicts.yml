@@ -44,7 +44,9 @@ jobs:
 
             # Resolve the recurring conflict set explicitly (only when files are present).
             conflict_candidates=(
+              .github/workflows/build-apk.yml
               .github/workflows/deploy-apk-site.yml
+              .github/workflows/fix-pr4-conflicts.yml
               android/app/src/main/AndroidManifest.xml
               android/app/src/main/java/com/example/googletvlogochanger/MainActivity.kt
               android/app/src/main/res/layout/activity_main.xml
